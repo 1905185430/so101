@@ -46,17 +46,22 @@ logger = logging.getLogger(__name__)
 def _import_lerobot():
     from lerobot.configs.policies import PreTrainedConfig
     from lerobot.robots.so_follower import SO101Follower, SO101FollowerConfig
-    from lerobot.cameras.opencv.configuration_opencv import OpenCVCameraConfig, Cv2Backends
-    from lerobot.datasets import LeRobotDataset
+    from lerobot.cameras.opencv.configuration_opencv import OpenCVCameraConfig
+    from lerobot.datasets.lerobot_dataset import LeRobotDataset
     from lerobot.policies.factory import make_policy
     from lerobot.teleoperators.so_leader import SO101Leader, SO101LeaderConfig
+
+    # pi0 支持：注册 pi0 专用处理器
+    try:
+        from lerobot.policies.pi0.processor_pi0 import Pi0NewLineProcessor  # noqa: F401
+    except ImportError:
+        pass
 
     return (
         PreTrainedConfig,
         SO101Follower,
         SO101FollowerConfig,
         OpenCVCameraConfig,
-        Cv2Backends,
         LeRobotDataset,
         make_policy,
         SO101Leader,
@@ -105,7 +110,7 @@ class DeployConfig:
 
 def build_robot_from_scene(scene_name: str, fps: int):
     """根据场景配置构建 SO101Follower。"""
-    _, SO101Follower, SO101FollowerConfig, OpenCVCameraConfig, Cv2Backends, *_ = _import_lerobot()
+    _, SO101Follower, SO101FollowerConfig, OpenCVCameraConfig, *_ = _import_lerobot()
 
     config.refresh_system_cameras()
     resolved = config.resolve_scene(scene_name)
@@ -128,7 +133,6 @@ def build_robot_from_scene(scene_name: str, fps: int):
             height=cam.get("height", 480),
             fps=cam.get("fps", fps),
             fourcc=cam.get("fourcc", "MJPG"),
-            backend=Cv2Backends.V4L2,
         )
 
     robot_cfg = SO101FollowerConfig(
@@ -144,7 +148,7 @@ def build_robot_from_scene(scene_name: str, fps: int):
 
 def build_teleop_from_scene(scene_name: str):
     """根据场景配置构建 SO101Leader（可选）。"""
-    _, _, _, _, _, _, SO101Leader, SO101LeaderConfig, _ = _import_lerobot()
+    _, _, _, _, _, SO101Leader, SO101LeaderConfig = _import_lerobot()
 
     resolved = config.resolve_scene(scene_name)
     if resolved is None:
@@ -202,10 +206,30 @@ def load_policy(
         ds_meta = None
 
     logger.info(f"创建策略: {policy_type} @ {device}")
-    policy_cfg = PreTrainedConfig.from_pretrained(policy_path, device=device)
 
-    policy = make_policy(cfg=policy_cfg, ds_meta=ds_meta, rename_map=rename_map)
-    policy.eval()
+    # pi0 兼容：加载前修复 config.json 中 Seeed fork 0.4.4 不支持的字段
+    if policy_type == "pi0":
+        from so101.deploy_pi0_patch import fix_pi0_config
+        fix_pi0_config(policy_path)
+
+    # pi0 直接用 from_pretrained 加载（避免 make_policy 需要 ds_meta/env_cfg）
+    if policy_type == "pi0":
+        from lerobot.policies.pi0 import PI0Policy
+        policy = PI0Policy.from_pretrained(policy_path)
+        policy.to(device)
+        policy.eval()
+        # 加载 tokenizer 用于预处理 task -> tokens
+        from transformers import AutoTokenizer
+        tokenizer_dir = os.path.join(policy_path, "paligemma-tokenizer")
+        if os.path.exists(tokenizer_dir):
+            pi0_tokenizer = AutoTokenizer.from_pretrained(tokenizer_dir)
+        else:
+            pi0_tokenizer = AutoTokenizer.from_pretrained("/home/orin-1/models/paligemma-tokenizer")
+    else:
+        policy_cfg = PreTrainedConfig.from_pretrained(policy_path, device=device)
+        policy = make_policy(cfg=policy_cfg, ds_meta=ds_meta, rename_map=rename_map)
+        policy.eval()
+        pi0_tokenizer = None
 
     n_params = sum(p.numel() for p in policy.parameters())
     logger.info(f"  策略加载完成 | 参数量: {n_params:,}")
@@ -216,9 +240,14 @@ def load_policy(
         for k in ds_meta.features:
             if k.startswith("observation.images."):
                 cam_keys.append(k.replace("observation.images.", ""))
+    elif hasattr(policy, 'config') and hasattr(policy.config, 'input_features'):
+        # 从模型 config 推断
+        for k, ft in policy.config.input_features.items():
+            if k.startswith("observation.images."):
+                cam_keys.append(k.replace("observation.images.", ""))
     logger.info(f"  策略期望摄像头: {cam_keys}")
 
-    return policy, dataset, cam_keys, action_stats
+    return policy, dataset, cam_keys, action_stats, pi0_tokenizer
 
 
 # ============================================================================
@@ -262,10 +291,24 @@ def robot_obs_to_policy_batch(
 
     # 图像: HWC uint8 → CHW float [0,1]
     # LeRobot V4L2 后端返回 RGB，直接使用
+    # 收集可用图像以确定尺寸（用于填充缺失摄像头）
+    first_img_shape = None
+    for cam in camera_keys:
+        img = obs.get(cam)
+        if img is not None and isinstance(img, np.ndarray):
+            first_img_shape = img.shape
+            break
+
     for cam in camera_keys:
         img = obs.get(cam)
         if img is None:
-            raise ValueError(f"相机 '{cam}' 返回空帧，请检查设备连接")
+            # 缺失摄像头：用零张量填充
+            if first_img_shape is not None:
+                h, w, c = first_img_shape
+                img = np.zeros((h, w, c), dtype=np.uint8)
+                logger.warning(f"  摄像头 '{cam}' 无数据，使用零填充")
+            else:
+                raise ValueError(f"相机 '{cam}' 返回空帧，且无可用参考图像")
         if isinstance(img, np.ndarray):
             if img.dtype == np.uint8:
                 img_tensor = torch.from_numpy(img).float().permute(2, 0, 1) / 255.0
@@ -467,6 +510,7 @@ def run_episode(
     camera_keys: list[str],
     teleop_leader=None,
     episode_idx: int = 0,
+    pi0_tokenizer=None,
 ) -> EpisodeStats:
     """运行单个 episode 的推理循环。"""
     dt = 1.0 / cfg.fps
@@ -535,6 +579,20 @@ def run_episode(
                 stats.failures += 1
                 logger.warning(f"    观测转换失败: {e}")
                 break
+
+            # pi0: 将 task 字符串转为 language tokens
+            if pi0_tokenizer is not None and "task" in batch:
+                encoded = pi0_tokenizer(
+                    batch["task"],
+                    max_length=48,
+                    padding="max_length",
+                    truncation=True,
+                    return_tensors="pt",
+                    padding_side="right",
+                )
+                batch["observation.language.tokens"] = encoded["input_ids"].to(cfg.device)
+                batch["observation.language.attention_mask"] = encoded["attention_mask"].bool().to(cfg.device)
+
             timing.preprocess_time = time.time() - t0
 
             # ---- 3. 推理 ----
@@ -929,7 +987,7 @@ def run_deploy(argv=None):
     logger.info(f"  观测摄像头 keys: {cam_keys_sample}")
 
     # 4. 加载策略
-    policy, dataset, policy_cam_keys, action_stats = load_policy(
+    policy, dataset, policy_cam_keys, action_stats, pi0_tokenizer = load_policy(
         cfg.policy_path,
         cfg.dataset_repo,
         cfg.policy_type,
@@ -1006,6 +1064,7 @@ def run_deploy(argv=None):
                 camera_keys=active_cam_keys,
                 teleop_leader=teleop_leader,
                 episode_idx=ep + 1,
+                pi0_tokenizer=pi0_tokenizer,
             )
             results.append(stats)
 

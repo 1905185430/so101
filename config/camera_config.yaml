@@ -15,6 +15,7 @@ cameras:
     - 能看到工作台面全景
     - 'Orbbec #1 相机本体在画面边缘'
     - 'Orbbec #2（侧面相机）可见一部分'
+    dev: /dev/video18
   orbbec_2:
     serial: CP1L44P0007K
     by_id: /dev/v4l/by-id/usb-Orbbec_R__Orbbec_Gemini_335_CP1L44P0007K-video-index0
@@ -30,6 +31,7 @@ cameras:
     - 机械臂基座在画面一侧
     - 工作台侧面可见
     - 适合判断物体与夹爪的前后距离
+    dev: /dev/video6
   icspring:
     serial: icSpring_icspring_camera_20240307110322
     by_id: /dev/v4l/by-id/usb-icSpring_icspring_camera_20240307110322-video-index0
@@ -43,6 +45,7 @@ cameras:
     - 夹爪主体占画面中央
     - 视野跟随机械臂运动
     - 可清晰看到夹爪开合动作和抓取细节
+    dev: /dev/video10
   builtin:
     serial: Sonix_Technology_Co.__Ltd._USB2.0_HD_UVC_WebCam
     by_id: /dev/v4l/by-id/usb-Sonix_Technology_Co.__Ltd._USB2.0_HD_UVC_WebCam-video-index0
@@ -50,6 +53,7 @@ cameras:
     type: builtin
     role: builtin
     description: 笔记本内置摄像头，可用于随手记录，不参与正式采集
+    dev: /dev/video8
 arms:
   follower_right:
     serial: 5B41532613

@@ -27,7 +27,21 @@ so101 record -s grab_redcube --dataset-repo-id Ready321/redcube_v2
 so101 record -s grab_redcube --name 
 so101 record -s grab_redcube --resume --dataset-repo-id Ready321/pickup_redcube_scene_2
 
+# 东十七实验室 抓去单个redcube
+so101 record -s grab_redcube --dataset-repo-id Ready321/redcube_dong17_v1 -n 20 --episode-time 30
+so101 record -s grab_redcube --resume --dataset-repo-id Ready321/redcube_dong17_v1
+
+# 东十七实验室 Push the red cube next to the green cube
+so101 record -s grab_redcube --dataset-repo-id Ready321/push_red_near_green -n 20 --episode-time 30
+so101 record -s grab_redcube --resume --dataset-repo-id Ready321/push_red_near_green
+
+huggingface-cli upload \
+  --repo-type dataset \
+  --repo-id Ready321/Push the red cube next to the green cube \
+  ~/.cache/huggingface/lerobot/Ready321/Push the red cube next to the green cube
 ```
+/home/xuan/.cache/huggingface/lerobot/Ready321/Push the red cube next to the green cube
+
 
 录制中键盘控制：
 - Enter → 开始 / 结束重置

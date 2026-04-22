@@ -185,7 +185,7 @@ def main():
     try:
         if args.command == "scan":
             from so101.scan import run_scan
-            run_scan(cameras=args.cameras, arms=args.arms, all=args.all)
+            run_scan(cameras=args.cameras or not args.arms, arms=args.arms or not args.cameras)
         
         elif args.command == "list":
             from so101.config import print_system_cameras, print_system_arms, available_scenes
@@ -215,7 +215,7 @@ def main():
         
         elif args.command == "teleop":
             from so101.teleop import run_teleop
-            run_teleop(mode=args.mode, arm=args.arm, no_cam=args.no_cam)
+            run_teleop(mode=args.mode, arm_side=args.arm)
         
         elif args.command == "record":
             from so101.record import run_record
