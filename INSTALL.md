@@ -18,10 +18,15 @@ conda activate lerobot
 
 ```bash
 # 基础安装（摄像头扫描、配置管理）
-pip install -e ~/so101/
+# 注意：先进入 so101 仓库目录
+cd ~/so101        # 或你的实际路径，如 ~/wjx/so101
+pip install -e .
 
 # 完整安装（含录制、部署、数据集管理）
-pip install -e "~/so101/[full]"
+pip install -e ".[full]"
+
+# 如果不在仓库目录内，用绝对路径：
+# pip install -e /path/to/so101/.[full]
 ```
 
 ## 4. 安装 LeRobot
