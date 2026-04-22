@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+dist/
+build/
+*.whl
+
+# Data (large video files)
+Data/
+
+# Model outputs
+outputs/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+*.log
+
+# Calibration (contains device-specific data)
+config/calibration/
+
+# Parquet/temp data
+*.parquet

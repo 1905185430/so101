@@ -1,0 +1,72 @@
+cameras:
+  orbbec_1:
+    serial: CP15641000AW
+    by_id: /dev/v4l/by-id/usb-Orbbec_R__Orbbec_Gemini_335_CP15641000AW-video-index0
+    by_path: /dev/v4l/by-path/pci-0000:00:14.0-usb-0:2.3:1.4-video-index0
+    fourcc: YUYV
+    width: 640
+    height: 480
+    product: Orbbec Gemini 335
+    type: orbbec
+    role: top
+    description: 俯视摄像头，固定于桌面正上方，视野覆盖整个工作台面
+    reference_image: reference_images/top_overhead_view.jpg
+    visual_hints:
+    - 能看到工作台面全景
+    - 'Orbbec #1 相机本体在画面边缘'
+    - 'Orbbec #2（侧面相机）可见一部分'
+  orbbec_2:
+    serial: CP1L44P0007K
+    by_id: /dev/v4l/by-id/usb-Orbbec_R__Orbbec_Gemini_335_CP1L44P0007K-video-index0
+    by_path: /dev/v4l/by-path/pci-0000:00:14.0-usb-0:1:1.4-video-index0
+    width: 640
+    height: 480
+    product: Orbbec Gemini 335
+    type: orbbec
+    role: side
+    description: 侧面摄像头，安装高度与机械臂基座平齐，斜向下观察工作区域
+    reference_image: reference_images/side_depth_view.jpg
+    visual_hints:
+    - 机械臂基座在画面一侧
+    - 工作台侧面可见
+    - 适合判断物体与夹爪的前后距离
+  icspring:
+    serial: icSpring_icspring_camera_20240307110322
+    by_id: /dev/v4l/by-id/usb-icSpring_icspring_camera_20240307110322-video-index0
+    by_path: /dev/v4l/by-path/pci-0000:00:14.0-usb-0:2.4:1.0-video-index0
+    product: icspring camera
+    type: usb_cam
+    role: wrist
+    description: 腕部摄像头，固定于从臂末端附近，随臂运动，近距离观察夹爪与物体
+    reference_image: reference_images/wrist_closeup.jpg
+    visual_hints:
+    - 夹爪主体占画面中央
+    - 视野跟随机械臂运动
+    - 可清晰看到夹爪开合动作和抓取细节
+  builtin:
+    serial: Sonix_Technology_Co.__Ltd._USB2.0_HD_UVC_WebCam
+    by_id: /dev/v4l/by-id/usb-Sonix_Technology_Co.__Ltd._USB2.0_HD_UVC_WebCam-video-index0
+    product: USB2.0 HD UVC WebCam
+    type: builtin
+    role: builtin
+    description: 笔记本内置摄像头，可用于随手记录，不参与正式采集
+arms:
+  follower_right:
+    serial: 5B41532613
+    port: /dev/serial/by-id/usb-1a86_USB_Single_Serial_5B41532613-if00
+    role: follower
+    name: so101_cong_right
+  leader_right:
+    serial: 5B42137834
+    port: /dev/serial/by-id/usb-1a86_USB_Single_Serial_5B42137834-if00
+    role: leader
+    name: so101_zhu_right
+scenes:
+  grab_redcube:
+    task: grab red cube
+    cameras:
+      top: orbbec_1
+      wrist: icspring
+      side: orbbec_2
+    follower: follower_right
+    leader: leader_right

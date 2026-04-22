@@ -1,0 +1,160 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "so101"
+version = "0.3.0"
+description = "SO-101 机器人臂快速部署工具链"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "嘉璇"},
+]
+keywords = ["robotics", "so-101", "lerobot", "teleoperation"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Robotics",
+]
+
+# 核心依赖（最小安装）
+dependencies = [
+    "pyyaml>=6.0",
+    "opencv-python>=4.5",
+    "colorama>=0.4.4",
+    "rich>=13.0",
+    "psutil>=5.9",
+]
+
+[project.optional-dependencies]
+# 录制功能
+record = [
+    "lerobot>=0.5.1",
+    "tqdm>=4.60",
+]
+
+# 部署推理
+deploy = [
+    "lerobot>=0.5.1",
+    "torch>=2.0",
+    "transformers>=4.30",
+]
+
+# 数据集管理
+dataset = [
+    "huggingface_hub>=0.16",
+    "flask>=2.3",
+]
+
+# 完整功能
+full = [
+    "so101[record,deploy,dataset]",
+]
+
+# 开发工具
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "pytest-benchmark>=4.0",
+    "black>=23.0",
+    "ruff>=0.1",
+    "mypy>=1.0",
+]
+
+# 所有功能
+all = [
+    "so101[full,dev]",
+]
+
+[project.scripts]
+so101 = "so101.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/1905185430/lerobot_workdocs"
+Repository = "https://github.com/1905185430/lerobot_workdocs"
+Documentation = "https://github.com/1905185430/lerobot_workdocs#readme"
+Issues = "https://github.com/1905185430/lerobot_workdocs/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+so101 = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--tb=short",
+    "--strict-markers",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "requires_device: marks tests that require physical devices",
+]
+
+[tool.black]
+line-length = 100
+target-version = ['py310']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+'''
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "UP",     # pyupgrade
+]
+ignore = [
+    "E501",   # line too long (handled by black)
+    "B008",   # do not perform function calls in argument defaults
+]
+
+[tool.ruff.isort]
+known-first-party = ["so101"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+check_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = [
+    "lerobot.*",
+    "cv2.*",
+    "yaml.*",
+]
+ignore_missing_imports = true
