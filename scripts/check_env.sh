@@ -66,7 +66,10 @@ which v4l2-ctl 2>/dev/null && echo "v4l2-ctl 可用" || echo "v4l2-ctl 不可用
 echo ""
 
 echo "========== so101 配置文件 =========="
-CONFIG_PATH="$HOME/wjx/so101/config/camera_config.yaml"
+CONFIG_PATH="$HOME/so101/config/camera_config.yaml"
+if [ ! -f "$CONFIG_PATH" ]; then
+    CONFIG_PATH="$HOME/wjx/so101/config/camera_config.yaml"
+fi
 if [ -f "$CONFIG_PATH" ]; then
     echo "配置文件存在: $CONFIG_PATH"
     grep -c "cameras:" "$CONFIG_PATH" >/dev/null && echo "  - cameras 区: 有" || echo "  - cameras 区: 无"
